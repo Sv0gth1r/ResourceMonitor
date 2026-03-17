@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevOps Monitor - WSL</title>
+    <style>
+        body { font-family: 'Courier New', monospace; background-color: #1a1a1a; color: #00ff41; padding: 20px; margin: 0; }
+        h1 { border-bottom: 1px solid #00ff41; padding-bottom: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
+        .card { background: #2d2d2d; padding: 20px; border-radius: 5px; border-left: 5px solid #00ff41; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .label { font-size: 0.9em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .value { font-size: 1.8em; font-weight: bold; margin: 10px 0; }
+        .bar-container { width: 100%; background-color: #444; height: 10px; border-radius: 5px; overflow: hidden; margin-top: 5px; }
+        .bar-fill { height: 100%; background-color: #00ff41; transition: width 0.5s ease; }
+        .status { font-size: 0.8em; float: right; color: #888; }
+    </style>
+</head>
+<body>
+    <h1>SYSTEM MONITOR <span class="status" id="last-update">--:--:--</span></h1>
+    
+    <div class="grid">
+        <!-- CPU -->
+        <div class="card">
+            <div class="label">CPU Usage</div>
+            <div class="value" id="cpu-val">--%</div>
+            <div class="bar-container"><div class="bar-fill" id="cpu-bar" style="width: 0%"></div></div>
+        </div>
+
+        <!-- RAM -->
+        <div class="card">
+            <div class="label">Memory (RAM)</div>
+            <div class="value"><span id="mem-used">--</span> / <span id="mem-total">--</span> GB</div>
+            <div class="bar-container"><div class="bar-fill" id="mem-bar" style="width: 0%"></div></div>
+            <div class="label" style="text-align: right;"><span id="mem-percent">--</span>% Used</div>
+        </div>
+
+        <!-- DISK -->
+        <div class="card">
+            <div class="label">Disk (/)</div>
+            <div class="value"><span id="disk-used">--</span> / <span id="disk-total">--</span> GB</div>
+            <div class="bar-container"><div class="bar-fill" id="disk-bar" style="width: 0%"></div></div>
+            <div class="label" style="text-align: right;"><span id="disk-percent">--</span>% Used</div>
+        </div>
+
+        <!-- NETWORK -->
+        <div class="card">
+            <div class="label">Network I/O</div>
+            <div class="value" style="font-size: 1.2em;">Sent: <span id="net-sent">--</span> MB</div>
+            <div class="value" style="font-size: 1.2em;">Recv: <span id="net-recv">--</span> MB</div>
+        </div>
+
+        <!-- PROCESSES -->
+        <div class="card">
+            <div class="label">Active Processes</div>
+            <div class="value" id="proc-count">--</div>
+        </div>
+    </div>
+
+    <script>
+        async function fetchStats() {
+            try {
+                const response = await fetch('/stats');
+                const data = await response.json();
+
+                // Update Text
+                document.getElementById('cpu-val').innerText = data.cpu;
+                document.getElementById('mem-used').innerText = data.memory_used_gb;
+                document.getElementById('mem-total').innerText = data.memory_total_gb;
+                document.getElementById('mem-percent').innerText = data.memory_percent;
+                document.getElementById('disk-used').innerText = data.disk_used_gb;
+                document.getElementById('disk-total').innerText = data.disk_total_gb;
+                document.getElementById('disk-percent').innerText = data.disk_percent;
+                document.getElementById('net-sent').innerText = data.network_sent_mb;
+                document.getElementById('net-recv').innerText = data.network_recv_mb;
+                document.getElementById('proc-count').innerText = data.processes;
+                document.getElementById('last-update').innerText = data.timestamp;
+
+                // Update Bars
+                document.getElementById('cpu-bar').style.width = data.cpu.replace('%', '') + '%';
+                document.getElementById('mem-bar').style.width = data.memory_percent + '%';
+                document.getElementById('disk-bar').style.width = data.disk_percent + '%';
+                
+                // Color coding for high usage (simple logic)
+                const cpuVal = parseFloat(data.cpu);
+                const memBar = document.getElementById('mem-bar');
+                if(cpuVal > 80) memBar.style.backgroundColor = '#ff4444';
+                else if(cpuVal > 50) memBar.style.backgroundColor = '#ffbb33';
+                else memBar.style.backgroundColor = '#00ff41';
+
+            } catch (error) {
+                console.error('Erreur de récupération des stats:', error);
+            }
+        }
+
+        // Fetch immediately then every 2 seconds
+        fetchStats();
+        setInterval(fetchStats, 2000);
+    </script>
+</body>
+</html>
